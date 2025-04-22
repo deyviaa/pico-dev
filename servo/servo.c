@@ -1,46 +1,65 @@
-// Deyvi Andrade- Aviles
-// EECE.3170 – Microprocessors I - Spring 2025
-// 02034366
-// Deliverable A
-
 #include "pico/stdlib.h"
+#include "hardware/pwm.h"
 
-#define PWM_GPIO 25
-#define RESOLUTION 16  // 4-bit resolution → 0–15
+#define SERVO_PIN 15
+#define LED_PIN 1
+#define BUTTON_PIN 2
 
-void PWM_FUNC(uint FREQUENCY, uint DUTY, uint duration_ms) {
-    uint64_t PERIOD = 1000000 / FREQUENCY;
-    uint64_t STEP = PERIOD / RESOLUTION;
+volatile bool run_servo = false;
+const uint HOME_PULSE = 1500;  // µs → usually center
 
-    for (uint t = 0; t < duration_ms * 1000; t += PERIOD) {
-        for (int i = 0; i < RESOLUTION; i++) {
-            gpio_put(PWM_GPIO, i < DUTY);
-            sleep_us(STEP);
-        }
+void button_isr(uint gpio, uint32_t events) {
+    if (gpio == BUTTON_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
+        run_servo = !run_servo;               // toggle
+        gpio_put(LED_PIN, run_servo);         // LED shows state
     }
 }
 
 int main() {
     stdio_init_all();
-    gpio_init(PWM_GPIO);
-    gpio_set_dir(PWM_GPIO, GPIO_OUT);
+
+    // setup PWM
+    gpio_set_function(SERVO_PIN, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(SERVO_PIN);
+    pwm_set_clkdiv(slice, 64.0f);
+    pwm_set_wrap(slice, 40000);  // 20ms
+    pwm_set_enabled(slice, true);
+
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    gpio_init(BUTTON_PIN);
+    gpio_set_dir(BUTTON_PIN, GPIO_IN);
+    gpio_pull_up(BUTTON_PIN);
+    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &button_isr);
+
+    // put servo in home on boot
+    pwm_set_chan_level(slice, pwm_gpio_to_channel(SERVO_PIN), HOME_PULSE);
 
     while (true) {
-        // Test each FREQUENCYuency
-        uint FREQUENCYs[] = {20, 50, 100, 200};
-    
-        for (int f = 0; f < 4; f++) {
-            uint FREQUENCY = FREQUENCYs[f];
-    
-            for (int level = 0; level <= 4; level++) {
-                uint DUTY_LVL = level * 4;  // 0, 4, 8, 12, 16 (100%)
-                if (DUTY_LVL > 15) DUTY_LVL = 15;
-                PWM_FUNC(FREQUENCY, DUTY_LVL, 1000); // 1 second at each level
+        if (run_servo) {
+            // sweep forward
+            for (int pulse = 1000; pulse <= 9000; pulse += 10) {
+                pwm_set_chan_level(slice, pwm_gpio_to_channel(SERVO_PIN), pulse);
+                sleep_ms(1);
+                if (!run_servo) break;
             }
-    
-            sleep_ms(1000);  // wait 1 sec between Frequencies
-            break;
+
+            sleep_ms(250);
+
+            // sweep backward
+            for (int pulse = 9000; pulse >= 1000; pulse -= 10) {
+                pwm_set_chan_level(slice, pwm_gpio_to_channel(SERVO_PIN), pulse);
+                sleep_ms(1);
+                if (!run_servo) break;
+            }
+
+        } else {
+            // on toggle OFF → return to home position
+            pwm_set_chan_level(slice, pwm_gpio_to_channel(SERVO_PIN), HOME_PULSE);
+            sleep_ms(10);  // prevent spam
         }
     }
+
     return 0;
 }

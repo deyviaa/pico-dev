@@ -5,7 +5,7 @@
 
 #include "pico/stdlib.h"
 
-#define PWM_GPIO 25
+#define PWM_GPIO 1
 #define RESOLUTION 16  // 4-bit resolution → 0–15
 
 void PWM_FUNC(uint FREQUENCY, uint DUTY, uint duration_ms) {
@@ -39,7 +39,6 @@ int main() {
             }
     
             sleep_ms(1000);  // wait 1 sec between Frequencies
-            break;
         }
     }
     return 0;
