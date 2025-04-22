@@ -1,3 +1,8 @@
+// Deyvi Andrade- Aviles
+// EECE.3170 – Microprocessors I - Spring 2025
+// 02034366
+// Deliverable C
+
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 
