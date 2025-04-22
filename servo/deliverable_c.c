@@ -10,14 +10,9 @@
 #define LED_PIN 1
 #define BUTTON_PIN 2
 
-
-// scary volatile bool for interrupt
 volatile bool run_servo = false;
 const uint HOME_PULSE = 1500;  // µs → usually center
 
-
-// interrupt call for the button press -- 
-// button press triggers the servo run, the servo keeps on running if the button has not been pressed an additional time
 void button_isr(uint gpio, uint32_t events) {
     if (gpio == BUTTON_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
         run_servo = !run_servo;               // toggle
@@ -28,7 +23,7 @@ void button_isr(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all();
 
-    // setup PWM & LED
+    // setup PWM
     gpio_set_function(SERVO_PIN, GPIO_FUNC_PWM);
     uint slice = pwm_gpio_to_slice_num(SERVO_PIN);
     pwm_set_clkdiv(slice, 64.0f);
@@ -67,7 +62,7 @@ int main() {
         } else {
             // on toggle OFF → return to home position
             pwm_set_chan_level(slice, pwm_gpio_to_channel(SERVO_PIN), HOME_PULSE);
-            sleep_ms(10);  // prevent spazm
+            sleep_ms(10);  // prevent spam
         }
     }
 
