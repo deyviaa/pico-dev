@@ -46,7 +46,9 @@ pico_enable_stdio_usb(record 0)
 
 # Add the standard library to the build
 target_link_libraries(record
-        pico_stdlib)
+        pico_stdlib
+        hardware_gpio
+        hardware_irq)
 
 # Add the standard include files to the build
 target_include_directories(record PRIVATE
